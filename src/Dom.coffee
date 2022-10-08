@@ -17,7 +17,7 @@ class Dom
   has_focus: (has_it) ->
     color = if has_it then 'gray' else '#eee'
     cursor = if has_it then 'pointer' else 'default'
-    @div.css(border: "2px solid #{color}", cursor: cursor)
+    @div.css(cursor: cursor)
 
   alg_changed: (is_playing, at_start, at_end, count_text, alg_texts) ->
     if is_playing
