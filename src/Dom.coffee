@@ -1,9 +1,11 @@
 class Dom
 
-  constructor: (@cube_id, @div, renderer, make_alg_area, showalg) ->
+  constructor: (@cube_id, @div, renderer, make_alg_area, showalg, customId) ->
     @div.css(position:'relative', 'font-family':'"Lucida Sans Unicode", "Lucida Grande", sans-serif')
     this.has_focus(false)
     @div.attr('data-cube-id', @cube_id)
+
+    @customId = customId
 
     renderer.setSize(@div.width(), @div.width())
     @div.append(renderer.domElement);
@@ -12,14 +14,14 @@ class Dom
     @hscale = Math.max(@scale, 15.0/40) # Minimum height -> readable text
 
     if make_alg_area
-      this.add_alg_area(showalg)
+      this.add_alg_area(false)
 
   has_focus: (has_it) ->
     color = if has_it then 'gray' else '#eee'
     cursor = if has_it then 'pointer' else 'default'
     @div.css(cursor: cursor)
 
-  alg_changed: (is_playing, at_start, at_end, count_text, alg_texts) ->
+  alg_changed: (is_playing, at_start, at_end, count_text, alg_texts, event_name) ->
     if is_playing
       for button in @buttons
         if button == @play
@@ -39,6 +41,12 @@ class Dom
     @play_or_pause = if is_playing then @pause else @play
 
     @count.html(count_text)
+    document.dispatchEvent(new CustomEvent("#{@customId}:#{event_name}", {detail: {
+      isPlaying: is_playing,
+      countText: count_text,
+      pastAlg: alg_texts.past,
+      futureAlg: alg_texts.future
+    }}))
 
     if @alg_text
       @alg_past.text(alg_texts.past)
@@ -69,7 +77,7 @@ class Dom
   add_alg_area: (showalg) ->
     @div.append($("<div/>", text: '?', id: "help-#{@cube_id}").addClass('roofpig-help-button'))
 
-    @alg_area = $("<div/>").height(@div.height() - @div.width()).width(@div.width()).css("border-top": "1px solid #ccc")
+    @alg_area = $("<div/>").height(@div.height() - @div.width()).width(@div.width())
     @div.append(@alg_area)
 
     if showalg
@@ -115,7 +123,8 @@ class Dom
     @alg_area.append(button)
 
     button.addClass('roofpig-button')
-    button.css('font-size': 28*@hscale, float: 'left', height: 40*@hscale, width: 76*@scale)
+    button.addClass(name)
+    button.css('font-size': 28*@hscale, float: 'left', height: 40*@hscale, width: 70*@scale)
 
   _make_count_area: ->
     count_div = $("<div/>", id: "count-#{@cube_id}").addClass('roofpig-count')

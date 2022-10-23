@@ -9,6 +9,7 @@
 class CubeAnimation
   @last_id = 0
   @by_id = {}
+  @by_uuid = {}
   @webgl_cubes = 0
 
   @initialize: ->
@@ -28,6 +29,26 @@ class CubeAnimation
   @create_in_dom: (parent_selector, config, div_attributes) ->
     new_pig = $("<div #{div_attributes} data-config=\"#{config}\"></div>").appendTo($(parent_selector))
     new CubeAnimation(new_pig)
+
+  @refresh: ->
+    pigs = $('.roofpig')
+    console.log("Found #{pigs.length} .roofpig divs")
+    for roofpig_div in pigs
+      $(roofpig_div).html('') # Clear existing cube data
+      new CubeAnimation($(roofpig_div))
+
+  @setSpeed: (cube_uuid, new_speed) ->
+    if CubeAnimation.by_uuid[cube_uuid]? && CubeAnimation.by_uuid[cube_uuid].alg.speed != new_speed
+      CubeAnimation.by_uuid[cube_uuid].alg.speed = new_speed
+      CubeAnimation.by_uuid[cube_uuid].alg.refresh_moves()
+
+  @setAlgorithm: (cube_uuid, new_alg) ->
+    if CubeAnimation.by_uuid[cube_uuid]? && CubeAnimation.by_uuid[cube_uuid].alg.move_codes != new_alg
+      CubeAnimation.by_uuid[cube_uuid].alg.update_moves(new_alg)
+
+  @startSolved: (cube_uuid, start_solved) ->
+    if CubeAnimation.by_uuid[cube_uuid]? && CubeAnimation.by_uuid[cube_uuid].alg.startsolved != start_solved
+      CubeAnimation.by_uuid[cube_uuid].alg.set_start_solved(start_solved)
 
   next_cube: ->
     ids = Object.keys(CubeAnimation.by_id)
@@ -49,7 +70,9 @@ class CubeAnimation
       @id = CubeAnimation.last_id += 1
       CubeAnimation.by_id[@id] = this
 
-      @config = new Config(roofpig_div.data('config'))
+      @config = new Config(roofpig_div.attr('data-config'))
+      cubeId = roofpig_div.attr('data-cubeid')
+      CubeAnimation.by_uuid[cubeId] = this
 
       use_canvas = @config.flag('canvas') || not CubeAnimation.webgl_browser || CubeAnimation.webgl_cubes >= 16
       if use_canvas
@@ -58,13 +81,13 @@ class CubeAnimation
         CubeAnimation.webgl_cubes += 1
         @renderer = new THREE.WebGLRenderer(antialias: true, alpha: true)
 
-      @dom = new Dom(@id, roofpig_div, @renderer, @config.alg != "", @config.flag('showalg'))
+      @dom = new Dom(@id, roofpig_div, @renderer, @config.alg != "", @config.flag('showalg'), cubeId)
       @scene = new THREE.Scene()
       @world3d =
         camera: new Camera(@config.hover, @config.pov),
         pieces: new Pieces3D(@scene, @config.hover, @config.colors, use_canvas)
 
-      @alg = new Alg(@config.alg, @world3d, @config.algdisplay, @config.speed, @dom)
+      @alg = new Alg(@config.alg, @world3d, @config.algdisplay, @config.speed, @dom, @config.flag('startsolved'))
 
       if (@config.setup) then new Alg(@config.setup, @world3d).to_end()
       @alg.mix() unless @config.flag('startsolved')

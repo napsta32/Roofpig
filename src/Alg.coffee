@@ -3,36 +3,71 @@
 #= require AlgAnimation
 
 class Alg
-  constructor: (@move_codes, @world3d, @algdisplay, @speed, @dom) ->
+  constructor: (@move_codes, @world3d, @algdisplay, @speed, @dom, @startsolved) ->
+    @playing = false
+    @next = 0
     @moves = []
+    this.refresh_moves()
+    this._update_dom('init', 'first time')
+
+  refresh_moves: ->
+    temp_playing = @playing
+    @playing = false
+    pos = 0
     for code in @move_codes.split(' ')
       if code.length > 0
-        @moves.push(this._make_move(code))
-    @next = 0
-    @playing = false
-    this._update_dom('first time')
+        if pos < @moves.length
+          @moves[pos] = this._make_move(code)
+        else
+          @moves.push(this._make_move(code))
+        pos = pos + 1
+    @playing = temp_playing
+
+  update_moves: (new_moves) ->
+    this.stop()
+    if @startsolved
+      this.to_start()
+    else
+      this.to_end()
+      @next = 0
+    @move_codes = new_moves
+    @moves = []
+    this.refresh_moves()
+    this._update_dom('init', 'first time')
+    this.mix() unless @startsolved
+
+  set_start_solved: (startsolved) ->
+    this.stop()
+    if @startsolved
+      this.to_start()
+    else
+      this.to_end()
+      @next = 0
+    this._update_dom('init', 'first time')
+    @startsolved = startsolved
+    this.mix() unless @startsolved
 
   next_move: ->
     unless this.at_end()
       @next += 1
       if this.at_end() then @playing = false
-      this._update_dom()
+      this._update_dom('next_move')
       @moves[@next-1]
 
   prev_move: ->
     unless this.at_start()
       @next -= 1
-      this._update_dom()
+      this._update_dom('prev_move')
       @moves[@next]
 
   play: ->
     @playing = true
-    this._update_dom()
+    this._update_dom('play')
     new AlgAnimation(this)
 
   stop: ->
     @playing = false
-    this._update_dom()
+    this._update_dom('stop')
 
   to_end: ->
     until this.at_end()
@@ -107,12 +142,12 @@ class Alg
   @pov_from: (move_codes) ->
     new Pov(new Alg(move_codes).moves)
 
-  _update_dom: (time = 'later') ->
+  _update_dom: (event_name, time = 'later') ->
     if @dom && @moves.length > 0
       if time == 'first time'
         @dom.init_alg_text(this.display_text().future)
 
-      @dom.alg_changed(@playing, this.at_start(), this.at_end(), this._count_text(), this.display_text())
+      @dom.alg_changed(@playing, this.at_start(), this.at_end(), this._count_text(), this.display_text(), event_name)
 
   _count_text: ->
     total = current = 0
